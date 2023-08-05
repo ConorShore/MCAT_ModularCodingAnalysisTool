@@ -11,33 +11,6 @@ from pycparser import c_parser, parse_file, preprocess_file
 
 from Extractors import FuncCallExtractor, FuncDefExtractor
 
-# Test code
-text = r"""
-    typedef int Node, Hash;
-
-    void HashPrint(Hash* hash, void (*PrintFunc)(char*, char*))
-    {
-        unsigned int i;
-
-        if (hash == NULL || hash->heads == NULL)
-            return;
-
-        for (i = 0; i < hash->table_size; ++i)
-        {
-            Node* temp = hash->heads[i];
-
-            while (temp != NULL)
-            {
-                PrintFunc(temp->entry->key, temp->entry->value);
-                SomeOtherFunc();
-                temp = temp->next;
-            }
-        }
-    }
-    void AnotherFunc(void) {
-        print("Hello");
-    }
-"""
 argparser = argparse.ArgumentParser(
     prog='MCAT',
     description='Modular Coding Analysis Tool',
