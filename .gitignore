@@ -1,3 +1,6 @@
+#Test C code folder
+testcode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
