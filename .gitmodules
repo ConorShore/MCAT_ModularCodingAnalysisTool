@@ -1,0 +1,4 @@
+[submodule "pycparser"]
+	path = pycparser
+	url = git@github.com:ConorShore/pycparser.git
+	branch = fake_c_only

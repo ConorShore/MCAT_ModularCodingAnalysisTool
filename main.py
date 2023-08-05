@@ -1,12 +1,15 @@
+#!/usr/bin/python3
 
-from prettytable import PrettyTable
-from pycparser import c_parser, c_ast, parse_file
+
+from re import T
 import sys
+import glob
+import os
+import argparse
 
-# This is not required if you've installed pycparser into
-# your site-packages/ with setup.py
-#
-sys.path.extend(['.', '..'])
+from pycparser import c_parser, parse_file, preprocess_file
+
+from Extractors import FuncCallExtractor, FuncDefExtractor
 
 # Test code
 text = r"""
@@ -35,86 +38,47 @@ text = r"""
         print("Hello");
     }
 """
+argparser = argparse.ArgumentParser(
+    prog='MCAT',
+    description='Modular Coding Analysis Tool',
+    epilog='Text at the bottom of help')
 
-# Create the parser and ask to parse the text. parse() will throw
-# a ParseError if there's an error in the code
-#
-parser = c_parser.CParser()
-ast = parser.parse(text, filename='<none>')
+filename =""
 
-# A generic extractor class for getting infomation from AST
-
-
-class GenericExtractor(c_ast.NodeVisitor):
-    def __init__(self):
-        self.__ExtractorList = []
-        self.__DataType = "Generic"
-
-    # Used to add items to the object's function list
-    def _appendList(self, dataToAppend, coordToAppend):
-        x = [dataToAppend, coordToAppend]
-        self.__ExtractorList.append(x)
-
-    # Returns the items in the function list
-    def getList(self):
-        return self.__ExtractorList
-
-    def getDataType(self):
-        return "Generic"
-
-    def __repr__(self):
-        table = PrettyTable()
-        table.field_names = [self.getDataType(), "Line Number"]
-
-        for entries in self.__ExtractorList:
-            table.add_row([entries[0],str(entries[1].line)])
-
-        return self.getDataType() + " Table\n" + str(table)
+argparser.add_argument('--filename', '-f',
+                       help="File to analyse", required=True)     # positional argument
+argparser.add_argument('-v', '--verbose',
+                       action='store_true')  # on/off flag
+argparser.add_argument('--parser', '-p',
+                       help="Path to C parser, use if it is not in PATH")     # positional argument
 
 
-# A class to extract all function call from a give AST
+args = argparser.parse_args()
 
-class FuncCallExtractor(GenericExtractor):
+print(args.filename)
 
-    def visit_FuncCall(self, node):
-        self._appendList(node.name.name, node.name.coord)
+# TODO - Test ideas for this
+# relative path with no ./
+# relative with with ./
+# full path
 
-        # Visit args in case they contain more func calls.
-        if node.args:
-            self.visit(node.args)
+TargetFileList = glob.iglob(str(args.filename) + "/**/*.c", recursive=True)
 
-    # when instantiating the class, also analyse the AST
-    def __init__(self, input_ast, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.visit(input_ast)
-        self.__DataType="FuncCall"
+for name in TargetFileList:
+    cparser = c_parser.CParser()
+
+    # test file is exists and is readable
     
-    def getDataType(self):
-        return "FuncCall"
+    file=open(name,"r")
 
-# A class to extract all function definitions from a give AST
+    # TODO -  Add support for customer cpp path
+    # TODO -  Add passable cpp_args
 
-class FuncDefExtractor(GenericExtractor):
+    ast = parse_file(name,use_cpp=True,
+    cpp_args=r'-I./pycparser/utils/fake_libc_include')
 
-    def visit_FuncDef(self, node):
-        self._appendList(node.decl.name, node.decl.coord)
+    FuncCallExtract = FuncCallExtractor(ast)
+    print(repr(FuncCallExtract))
 
-    # when instantiating the class, also analyse the AST
-    def __init__(self, input_ast, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.visit(input_ast)
-        self.__DataType="FuncDef"
-
-    def getDataType(self):
-        return "FuncDef"
-
-FuncCallExtract = FuncCallExtractor(ast)
-print(FuncCallExtract)
-
-FuncDefExtract = FuncDefExtractor(ast)
-print(FuncDefExtract)
-
-# v = FuncCallVisitor()
-# v.visit(ast)
-# x = FuncDefVisitor()
-# x.visit(ast)
+    FuncDefExtract = FuncDefExtractor(ast)
+    print(repr(FuncDefExtract))

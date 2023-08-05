@@ -1,6 +1,9 @@
 #Test C code folder
 testcode/
 
+# pycparser
+pycparser/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
