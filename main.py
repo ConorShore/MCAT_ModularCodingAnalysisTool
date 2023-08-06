@@ -7,9 +7,9 @@ import glob
 import os
 import argparse
 
-from pycparser import c_parser, parse_file, preprocess_file
 
-from Extractors import FuncCallExtractor, FuncDefExtractor
+
+from C_Extractors import CLangParser
 
 argparser = argparse.ArgumentParser(
     prog='MCAT',
@@ -18,40 +18,53 @@ argparser = argparse.ArgumentParser(
 
 filename =""
 
-argparser.add_argument('--filename', '-f',
-                       help="File to analyse", required=True)     # positional argument
+# The key is the language name, the value is a list, first entry in the parse function,
+# the second entry is file extensions assosiated with this language
+# the third entry is the "nice" way of displaying the language i.e Python
+supportedLanguages = {
+    "c" : [CLangParser,[".c"],"C"]
+}
+
+
+# TODO - make this not a required thing, if not specific check files types to determine 
+# TODO - add some way to pass language specific options down to parser
+argparser.add_argument('--files', '-f',
+                       help="File to analyse", required=True)
+argparser.add_argument('--language', '-l',
+                       help="Language to analyse", required=True)
 argparser.add_argument('-v', '--verbose',
                        action='store_true')  # on/off flag
-argparser.add_argument('--parser', '-p',
-                       help="Path to C parser, use if it is not in PATH")     # positional argument
-
 
 args = argparser.parse_args()
+lowercaseTargetLang = str(args.language).lower()
 
-print(args.filename)
 
+
+if lowercaseTargetLang not in supportedLanguages:
+    print("Language not supported")
+    print("Supported languages are:")
+    for lang in supportedLanguages.values():
+        print(lang[2])
+        exit()
+
+        
 # TODO - Test ideas for this
 # relative path with no ./
 # relative with with ./
 # full path
 
-TargetFileList = glob.iglob(str(args.filename) + "/**/*.c", recursive=True)
+# TODO - test file is exists and is readable
 
-for name in TargetFileList:
-    cparser = c_parser.CParser()
+TargetFileList = []
+for fileExtension in supportedLanguages[lowercaseTargetLang][1]:
 
-    # test file is exists and is readable
-    
-    file=open(name,"r")
+    # glob returns a list of files, but we want to flatten that out seen as 
+    # we could be running through this loop more than once
+    foundFiles = glob.glob(str(args.files) + "/**/*" + fileExtension, recursive=True)
+    for file in foundFiles:
+        TargetFileList.append(file)
 
-    # TODO -  Add support for customer cpp path
-    # TODO -  Add passable cpp_args
+for file in TargetFileList:
 
-    ast = parse_file(name,use_cpp=True,
-    cpp_args=r'-I./pycparser/utils/fake_libc_include')
-
-    FuncCallExtract = FuncCallExtractor(ast)
-    print(repr(FuncCallExtract))
-
-    FuncDefExtract = FuncDefExtractor(ast)
-    print(repr(FuncDefExtract))
+    funcs = supportedLanguages[lowercaseTargetLang][0](file)
+    print(repr(funcs))

@@ -1,76 +1,127 @@
-from pycparser import c_ast
 from prettytable import PrettyTable
+from dataclasses import dataclass
 
-# A generic extractor class for getting a list of particular types from and AST
+# This is a simple data container with whatever data of interest you want, and where it is
 
-class GenericExtractor(c_ast.NodeVisitor):
-    def __init__(self):
-        self.__ExtractorList = []
-        self.__DataType = "Generic"
+class GenericInterestObject():
+    def __init__(self,data = "",linenumber = 0):
+        self.__data = data
+        self.__lineNumber = linenumber
 
-    # Used to add items to the object's function list
-    def _appendList(self, dataToAppend, coordToAppend):
-        x = [dataToAppend, coordToAppend]
-        self.__ExtractorList.append(x)
+    def set(self, Datain: str, LineNumberin: int):
+        self.__data = Datain
+        self.__lineNumber = LineNumberin
 
-    # Returns the items in the function list
-    def getList(self):
-        return self.__ExtractorList
+    def getData(self) -> list:
+        return self.__data
 
-    def getDataType(self):
-        return "Generic"
+    def getLineNumber(self) -> int:
+        return self.__lineNumber
 
-    # Repr prints a nice table :)
-    def __repr__(self):
+    def __repr__(self) -> str:
         table = PrettyTable()
-        table.field_names = [self.getDataType(), "Line Number"]
+        table.field_names = ["Data", "Line Number"]
+        table.add_row([self.__data, self.__lineNumber])
+        return table
 
-        for entries in self.__ExtractorList:
-            table.add_row([entries[0],str(entries[1].line)])
+    def __str__(self) -> str:
+        return str(self.__data) + "," + str(self.__lineNumber) + "\n"
 
-        return self.getDataType() + " Table\n" + str(table)
+# A Generic Interest List is a list of GenericInterestObjects with a datatype header
 
-    # returns the data as a CSV. Comma between data and newline between entries
-    def __str__(self):
+class GenericInterestList():
+
+    def __init__(self, dataType="Generic", list = []):
+        self.__dataType = dataType
+        self.__list = list
+
+    def __repr__(self) -> str:
+        table = PrettyTable()
+        table.field_names = [self.__dataType, "Line Number"]
+
+        for entries in self.__list:
+            table.add_row([str(entries[0]), str(entries[1])])
+
+
+        return str(self.__dataType) + " Table\n" + str(table) + "\n"
+
+    def __str__(self) -> str:
         returnstr = ""
-        for entries in self.__ExtractorList:
+        returnstr += self.__dataType + "\n"
+        for entries in self.__list:
             returnstr += entries[0] + "," + str(entries[1].line) + "\n"
 
         return returnstr
 
+    def append(self, objectToAdd: GenericInterestObject):
+        self.__list.append([objectToAdd.getData(), objectToAdd.getLineNumber()])
 
-# A class to extract all function call from a give AST
+    def setDataType(self, dataType: str):
+        self.__dataType = dataType
 
-class FuncCallExtractor(GenericExtractor):
+    def getList(self) -> list:
+        return self.__list
 
-    def visit_FuncCall(self, node):
-        self._appendList(node.name.name, node.name.coord)
+    def getDataType(self) -> str:
+        return self.__dataType
 
-        # Visit args in case they contain more func calls.
-        if node.args:
-            self.visit(node.args)
+# A generic extractor class for getting a list of particular types from and AST
 
-    # when instantiating the class, also analyse the AST
-    def __init__(self, input_ast, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.visit(input_ast)
-        self.__DataType="FuncCall"
+
+class GenericExtractor():
+    def __init__(self):
+        self.__ExtractorList = GenericInterestList()
+
+    # Used to add items to the object's function list
+    def _appendList(self, dataToAppend, LineNumToAppend):
+        self.__ExtractorList.append(GenericInterestObject(dataToAppend, LineNumToAppend))
+
+    # Returns the items in the function list
+    def _getList(self) -> list:
+        return self.__ExtractorList.getList()
+
+    def _getDataType(self) -> str:
+        return self.__ExtractorList.__dataType
+
+    # Repr prints a nice table :)
+    def __repr__(self) -> str:
+        return repr(self.__ExtractorList)
+
+    # returns the data as a CSV. Comma between data and newline between entries
+    def __str__(self) -> str:
+        return str(self.__ExtractorList)
+
+
+
+
+# This should take in a file name and contain 2 GenericInterestsLists, 1 for Function Definitions
+# and 1 for function calls along with the filename
+
+class GenericParseObject():
+    def __init__(self, funcDefList : list, funcCallList : list, filename : str):
+        self.__filename = filename
+        self.__funcDefList = GenericInterestList("Function Definition",funcDefList)
+        self.__funcCallList = GenericInterestList("Function Call",funcCallList)
     
-    def getDataType(self):
-        return "FuncCall"
+    def getFuncDefList(self) -> list:
+        return self.__funcDefList
 
-# A class to extract all function definitions from a give AST
+    def getFuncCallList(self) -> list:
+        return self.__funcCallList
 
-class FuncDefExtractor(GenericExtractor):
+    def getFileName(self) -> str:
+        return self.__filename
 
-    def visit_FuncDef(self, node):
-        self._appendList(node.decl.name, node.decl.coord)
+    def __repr__(self) -> str:
+        returnstr = self.__filename + "\n"
+        returnstr += repr(self.__funcDefList)
+        returnstr += repr(self.__funcCallList)
+        return returnstr
 
-    # when instantiating the class, also analyse the AST
-    def __init__(self, input_ast, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.visit(input_ast)
-        self.__DataType="FuncDef"
+    def __str__(self) -> str:
+        returnstr = self.__filename + "\n"
+        returnstr += str(self.__funcDefList)
+        returnstr += str(self.__funcCallList)
+        return returnstr
 
-    def getDataType(self):
-        return "FuncDef"
+
